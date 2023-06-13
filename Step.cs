@@ -545,3 +545,501 @@
             자신이 가지고 있는 자식 오브젝트의 갯수를 세서 만들어야할 무기 인덱스 값을 비교한다.
                 if(index < transform.childCount)
 */
+
+/*
+10. 뱀서라이크 - 자동 원거리 공격 구현
+
+    #1. 몬스터 검색 구현
+        [a]. 멀리있는 총알을 쏘기위해 플레이어에게 접근하고 있는 몬스터를 인식하는 스케너를 만든다.
+            이 스케너가 몬스터만을 인식할 수 있도록 Layer를 추가하도록 한다. Enemy
+                tag는 그저 이름표에 불과하다면 Layer는 물리, 시스템 상으로 구분짓기 위한 요소
+        [b]. 몬스터 프리펩에 레이어 지정
+        [c]. 몬스터 스캔을 담당할 Scanner 스크립트를 만든다.
+        [d]. 스케너에게 필요한 속성
+            스켄을 할 범위, 어떤 오브젝트를 스캔할 것인지 LayerMask, 스캔 결과를 저장할 배열, 스캔한 몬스터 중 가장 가까운 위치에 있는 몬스터를 저장할 위치 변수
+                public float scanRange; public LayerMask targetLayer; public RaycastHit2D[] targets; public Transform nearestTarget;
+        [e]. FixedUpdate()에서 스캔을 진행한다.
+            타겟에 CircleCastAll로 빔을 쏘고 모든 결과를 받아 온다.
+                targets = Physics2D.CircleCastAll(transform.position, scanRange, Vector2.zero, 0, targetLayer);
+        [f]. 빔을 통해 플레이어 주변에 있는 몬스터 검색이 되었다면 가장 가까이에 있는 몬스터를 찾는다.
+            Transform GetNearest()
+        [g]. 거리를 비교하기 위하여 지역 변수를 만든다. 그 변수에는 가장 먼 거리를 배정해 놓는다.
+            foreach문으로 배열을 순회하며 거리를 비교한다.
+                foreach(RaycastHit2D target in targets)
+                    Vector3 myPos = transform.position;
+                    Vector3 targetPos = target.transform.position;
+                    float curDiff = Vector3.Distance(myPos, targetPos);
+                    if(currDiff < diff) diff = curDiff; result = target.transform;
+        [h]. FixedUpdate()에서 비교 함수를 호출하여 가장 가까이에 있는 적을 속성에 저장한다.
+            nearestTarget = GetNearest();
+        [i]. 씬으로 돌아가 스케너 스크립트를 플레이어에 부착하고 스캔 범위를 지정해 준다.
+            TargetLayer를 Enemy로 지정 한다.
+
+    #2. 프리팹 만들기
+        [a]. 샆을 하이어라키 창에 등록한다.
+        [b]. 스프라이트를 Props 아틀라스에서 Bullet3로 교체 한다.
+        [c]. 콜라이더를 리셋 시킨다.
+        [d]. Bullet 1 로 명명
+        [e]. 프리팹 폴더로 프리팹화
+        [f]. 트리거
+        [g]. 데미지 지정
+
+    #3. 총탄 생성하기
+        [a]. 근접 공격을 관리해 왔던 Weapon 0 게임 오브젝트를 복사한다.
+            Weapon 1 속성을 바꿔 준다.
+                1 2 3 0 0
+        [b]. 풀 매니저에 총알 프리팹을 추가한다.
+        [c]. Weapon 스크립트로 가서 Update() 함수에 로직을 추가한다.
+            일정한 간격으로 총탄을 발사하기 위해 타이머를 속성으로 갖는다. float timer;
+            timer += Time.deltaTime; 으로 계속 시간을 증가 시키다가 timer가 speed 값보다 크다면 총탄을 발사 한다.
+            발사 함수를 만들고 timer를 초기화 한다.
+        [d]. Fire() 함수를 만든다.
+            가장 먼저 플레이어 주변이 탐지된 적이 있는지 부터 체크한다.
+            적을 감지하는 Scanner 스크립트를 받기 위해 Scanner컴포넌트가 부착된 Player에게 Scanner 속성을 추가한다.
+                public Scanner scanner;
+                    Awake()에서 초기화 한다.
+            Weapon 스크립트로 돌아가서 자신의 부모 Player 스크립트를 속성으로 받아온다.
+                Player player;
+                    Awake() player = GetComponentInParent<Player>();
+            적을 감지 한다.
+                if(!player.scanner.nearestTarget) return;
+        [e]. 적이 있다면 총알을 받아온다.
+            Transform bullet = GameManager.instance.pool.Get(prefabId).transform;
+            buller.position = transform.position;
+        [f]. Init() 함수로 가서 speed 값( 연사 속도 )을 0.3초로 바꿔 준다.
+
+    #4. 총탄 발사하기
+        [a]. 근접 무기는 Weapone 0 을 통해 근접 무기가 스스로 회전하였었다.
+        [b]. 총알은 개별로 속도를 갖고 목표물을 향해 접근한다.
+            총알 프리팹에 리지드바디를 추가한다.
+                중력 0
+        [c]. Bullet 스크립트로 가서 리지드바디를 속성으로 받는다.
+        [d]. Init(... Vector3 dir) 함수에 가서 총알이 날아갈 방향을 매개 변수로 받는다.
+            방향을 적용하는 경우를 제어문으로 설정한다.
+                관통 값이 -1이 아닌 경우 속도를 방향으로 지정한다.
+                if(per > -1) rigid.velocity = dir;
+        [e]. 트리거 이벤트 함수를 만든다.
+            OnTriggerEnter2D
+                몬스터 태그가 아니거나 근접 무기 즉, 관통이 -1인 총알 일 경우 반환한다.
+                    if(!other.CompareTag("Enemy") || per == -1) return;
+        [f]. 몬스터 태그이면서 근접 무기가 아닐 경우 관통 값이 줄어 들고 만약 관통 값이 -1까지 내려 왔다면 총알을 비활성화 한다.
+            비활성화 이전에 이 총알 인스턴를 재활용 하기 위해 속도 값을 초기화 한다.
+                rigid.velocity = Vector2.zero;
+        [g]. Weapon 스크립트로 가서 먼저 근접 무기를 초기화 할 때 매개 변수가 전달되지 않은 것을 zero 값으로 보내 준다.
+        [h]. Fire() 함수로 가서 적을 향하는 방향 값을 저장한다.
+            Vector3 targetPos = player.scanner.nearestTarget.position;
+            Vector3 dir = targetPos - transform.position;
+            dir = dir.normalized;
+        [i]. 목표를 향해 총알을 회전 시킨다.
+            bullet.rotation = Quaternion.FromToRotation(Vector3.up, dir);
+        [j]. 만들어진 총알을 초기화 시킨다.
+            bullet.GetComponent<Bullet>().Init(damage, count, dir);
+*/
+
+/*
+11. 뱀서라이크 - 타격감있는 몬스터 처치 만들기
+
+    #1. 피격 리액션
+        [a]. Enemy 스크립트에 피격을 위한 로직을 추가 한다.
+            이미 만들어 두었던 Trigger 이벤트 함수에서 체력이 달는 곳에 피격 로직을 추가한다.
+        [b]. 애니매이션에 Hit 파라미터를 전달한다.
+            anim.SetTrigger("Hit");
+        [c]. Health가 차감될 때 넉백 효과를 주도록 한다.
+            넉백 코루틴 함수를 만든다.
+                IEnumerator KnonkBack()
+                하나의 물리 프레임을 딜레이를 주기 위해 WaitForFixedUpdate 타입의 속성을 만든다.
+                    WaitForFixedUpdate wait;
+                        초기화를 시킨다.
+        [d]. 코루틴에 다음 하나의 물리 프레임까지 기다리는 딜레이를 추가한다.
+            yield return wait;
+            플레이어 반대 방향으로 넉백을 시키기 위해 플레이어 위치와 나의 위치로 방향을 구한다.
+                Vector3 playerPos = GameManager.instance.player.transform.position;
+                Vector3 dirVec = transform.position - playerPos;
+            구해진 방향으로 즉발적인 힘을 준다.
+                rigid.AddForce(dirVec.normalized * 3, ForceMode2D.Impulse);
+        [e]. 현재 FixedUpdate()에서 물리적으로 몬스터가 이동하고 있다. 이로 인해 넉백이 발생하지 않고 있다.
+            몬스터가 Hit 상태일 때는 몬스터가 플레이어를 향해 가는 로직을 실행시키지 않도록 제어문을 추가한다.
+                if(!isLive || anim.GetCurrentAnimatorStateInfo(0).IsName("Hit"))
+
+    #2. 사망 리액션
+        [a]. isLive 라고 만들 상태를 false로 바꾸고 불필요한 충돌을 무시하기 위해 Collider2D 속성을 만든다.
+            Collider2D coll;
+            콜라이더와 물리를 비활성화 한다.
+                coll.enabled = false;
+                rigid.simulated = false;
+        [b]. 애니메이션 파라미터를 죽음을 전달한다.
+            anim.SetBool("Dead", true);
+        [c]. 죽을 때 다른 몬스터를 가리지 않도록 스프라이트 순서를 내린다.
+            sprite.sortingOrder = 1;
+        [d]. 죽은 몬스터를 재활용 하기 위한 초기화 작업을 진행한다.
+            만들어 두었던 활성화 함수 OnEnable()에서 비활성화 하였던 물리 및 기타 등등을 초기화 한다.
+                coll.enabled = true;
+                rigid.simulated = true;
+                sprite.sortingOrder = 2;
+                anim.SetBool("Dead", false);
+                health = maxHealth;
+        [e]. 죽음 애니메이션을 일정 시간 출력한 뒤에 몬스터 오브젝트를 비활성화 한다.
+            Trigger에서 Dead()함수를 호출하지 말고 애니메이션에서 호출하도록 한다.
+        [f]. 씬에서 DeadEnemy 1 애니메이션 이벤트를 추가한다.
+            애니메이션 키프레임을 복사하여 1초에 붙여넣는다.
+                Add event로 이벤트를 추가한다.
+            DeadEnemy 2도 똑같이 추가한다.
+        [g]. 몬스터 프리팹에서 DeadEnemy 1 애니메이션으로 들어간다.
+            여기서 이벤트를 선택하면 Function에서 Dead() 함수를 호출할 수 있다.
+            컨트롤러를 2 로 바꾼뒤 마찬가지로 Dead() 함수를 연결한다.
+
+    #3. 처치 데이터 얻기
+        [a]. 게임 매니저로 부터 몬스터의 경험치, 횟수 등을 받는다.
+            속성으로 킬수, 레벨, 경험치를 만든다.
+                public int level; public int kill; public int exp; public int[] nextExp = {10, 30, 60, 100, 150, 210, 280, 360, 450, 600};
+        [b]. 게임 매니저의 속성을 헤더로 정리한다.
+            Game Control, Player Info, Game Object
+        [c]. 경험치 획득 함수를 만든다.
+            public void GetExp()
+                경험치를 받았으므로 exp++;
+                그리고 불어난 경험치와 nextExp[level]의 값을 비교하여 같다면 레벨을 증가 시키고 exp를 초기화 한다.
+                    level++; exp = 0;
+        [d]. 킬수와 경험치가 갱신되는 때는 몬스터가 사망했을 때 이다. 
+            Enemy 스크립트에서 체력이 0 밑으로 떨어 졌을 때 경험치 획득 함수를 호출한다.
+                GameManager.instance.kill++;
+                GameManager.instance.GetExp();
+        [e]. 반복되는 사망 로직 실행을 방지하기 위해 Trigger 초입에 몬스터가 죽었는지 확인하는 제어문을 추가한다.
+*/
+
+/*
+12. 뱀서라이크 - HUD 제작하기
+
+    #1. UI 캔버스
+        [a]. 도화지, UI를 배치할 캔버스를 만든다.
+            Canvas와 Canvas Scaler를 설정한다.
+            UI Scale Mode를 Scale With Screen Size로 바꿔 준다.
+            135 / 270
+            Match는 0.5, Pixel Per unit은 18
+        [b]. 캔버스에 Text UI를 추가한다.
+            Size : 400 / 100, Color : 흰색, 폰트 사이즈 : 30
+
+    #2. 스크립트 준비
+        [a]. UI를 컨트롤 할 HUD스크립트를 만든다.
+        [b]. 총 5가지의 정보를 다룰 예정이다.
+        [c]. 열거형 속성을 추가한다.
+            public enum InfoType { Exp, Level, Kill, Time, Health }
+            public InfoType type;
+        [d]. UI를 받을 텍스트와 슬라이트 속성을 추가한다.
+            네임 스페이스를 먼저 추가 한다.
+                using UnityEngine.UI;
+            Text myText; Slider mySlider;
+        [e]. 텍스트와 슬라이더를 초기화 한다.
+        [f]. 정보를 갱신하기 위해 LateUpdate()함수를 만든다.
+            switch문으로 정보의 타입에 따라 각기 다른 갱신 로직을 실행 한다.
+
+    #3. 경험치 게이지
+        [a]. 캔버스 안에 UI 슬라이더를 만든다.
+            앵커를 중앙 상단으로 배치 시키고 가득 채운다.
+                높이 여백을 7로 지정
+        [b]. Slider의 interactable을 해제하여 플레이어가 임의로 게이지를 조정하지 못하게 한다.
+            Transition None
+            Navigation None
+            Handle Rect를 지운다. None
+            value 0.5
+        [c]. Slider의 자식 오브젝트로 있는 Handle도 지운다.
+        [d]. Background의 앵커를 화면을 모두 채우도록 채운다.
+        [e]. FillArea도 마찬가지로 모두 채우도록 한다.
+        [f]. Fill의 Left, right를 0으로
+        [g]. Background의 스프라이트를 UI 아틀라스에서 Back 0 로 바꿔 준다.
+        [h]. Fill의 스프라이트를 UI 아틀라스의 Front 0으로 바꿔 준다.
+        [i]. 게임 매니저가 보유한 경험치에 따라 Slider의 이미지가 바뀌겠끔 HUD 스크립트로 가서 LateUpdate()함수의 Exp Case에 로직을 추가한다.
+        [j]. 현재 경험치 / 최대 경험치
+            float curExp = GameManager.instance.exp;
+            float maxExp = GameManager.instance.nextExp[GameManager.instance.levle];
+            mySlider.value = curExp / maxExp;
+        [k]. Slider 오브젝트에 스크립트를 부착한다.
+        [l]. Type을 Exp로 지정한다.
+
+    #4. 레벨 및 킬수 텍스트
+        [a]. Slider 오브젝트를 Exp로 명명
+        [b]. 캔버스에 Text UI를 추가 한다.
+            앵커를 오른쪽 위로 지정한다.
+            텍스트를 오른쪽 정렬한다.
+            x축 여백을 -2, y축 여백을 -8
+            폰트를 neodgm으로 변경 size 6, Lv.999
+            Level로 명명
+        [c]. 캔버스에 Image UI를 추가한다.
+            이미지 스프라이트를 UI 아틀라스에서 Icon 0으로 교체
+            SetNativeSize, 앵커를 왼쪽 위로 지정한다.
+            여백 2, -8
+            Level 오브젝트를 복사하여 이미지 자식으로 둔다.
+            자식의 앵커를 왼쪽으로 붙인다.
+            자식읜 높이 사이즈를 8로 맞추고 x 여백을 9, 중앙 가운데 정렬, 9999
+            자식을 Kill Text로 명명
+            Kill로 명명
+        [d]. HUD 스크립트로 가서 레벨과 킬수에 대한 로직을 추가한다.
+        [e]. Level은 text 속성에 게임 매니저의 레벨 값을 스트링으로 변환하여 넣어 준다.
+            myText.text = string.Format("Lv.{0:F0}", GameManager.instance.level);
+        [f]. Kill도 마찬가지
+            myText.text = string.Format("{0:F0}", GameManager.instance.kill);
+        [g]. Kill Text에 HUD 스크립트를 부착한다.
+            타입은 Kill
+        [h]. Level에도 HUD 스크립트 부착
+
+    #5. 타이머 텍스트
+        [a]. 생존 시간을 표시할 Text를 만든다.
+            Level을 복사한다.
+            앵커를 정 중앙 상단으로 위치 시킨다.
+            Time으로 명명, 00:00
+            사이즈 9, 색을 흰색, HUD를 부착하고 타입은 Time으로
+        [b]. HUD 스크립트에 Time 로직을 추가한다.
+        [c]. 흐르는 시간이 아닌 남은 시간을 먼저 구한다.
+            float remainTime = GameManager.instance.maxGameTime - GameMnager.instance.gameTime;
+        [d]. 구한 시간을 분과 초로 분리한다.
+            int min = Mathf.FloorToInt(remainTime / 60);
+            int sec = Mathf.FloorToInt(remainTime % 60);
+        [e]. 구한 분 초를 텍스트로 출력한다.
+            myText.text = string.Format("{0:D2}:{1:D2}", min, sec);
+
+    #6. 체력 게이지
+        [a]. 게임 매니저 스크립트로 가서 체력과 최대 체력 속성을 만든다.
+            public int health; public int maxHealth = 100;
+        [b]. 캔버스에 빈 오브젝트를 만든다.
+            Health로 명명, 사이즈 12 / 4
+        [c]. Exp 를 복사한뒤 Health의 자식으로 둔다.
+            Health Slider로 명명
+            앵커를 아래쪽 꽉채운다. 높이 4
+        [d]. Background 스프라이트를 Back 1로 바꿔주고
+            Fill 스프라이트를 Front 1로 바꿔준다.
+            Health Slider의 위치를 높이 -12로 지정
+        [e]. HUD 스크립트로 가서 Health 로직을 추가한다.
+        [f]. 경험치 로직과 비슷하다.
+            float curHealth = GameManager.instance.health;
+            float maxHealth = GameManager.instance.maxHealth;
+            mySlider.value = curHealth / maxHealth;
+        [g]. Health Slider에 HUD 스크립트를 부착한다.
+        [h]. 게임 매니저 스크립트에서 Start() 함수를 만든다.
+            현재 체력을 초기화 해준다.
+            health = maxHealth;
+        [i]. 체력바가 플레이어를 따라가도록 Follow 스크립트를 만든다.
+            RectTransform 속성을 갖는다.
+            RectTransform rect;
+                Awake()에서 초기화 한다.
+            FixedUpdate()에서 플레이어를 따라다닌다.
+        [j]. 월드와 스클린 좌표계가 다르므로 카메라를 가져와서 월드의 좌표계를 스크린 좌표계로 변환해 준다.
+            rect.position = Camera.main.WorldToScreenPoint(GamaManager.instance.player.transform.position);
+*/
+
+/*
+13. 뱀서라이크 - 능력 업그레이드 구현
+
+    #1. 아이템 데이터 만들기
+        [a]. 아이템 데이터의 생성을 담당할 스크립트를 만든다. ItemData
+        [b]. 모노비해비얼을 ScriptableObject로 바꿔준다.
+            이 스크립트는 근접, 원거리 공격, 전체 능령치 업 아이템, 힐링등을 모두 포함한다.
+        [c]. 헤더로 구분지으며 속성을 만든다.
+        [d]. Main Info : 아이템 아이디, 이름, 설명, 아이콘, 아이템 타입
+            public int itemId; public string itemName; public string itemDesc; public Sprite itemIcon; public enum ItemType { Melee, Range, Glove, Shoe, Heal } public ItemType itemType;
+        [e]. Level Data : 기본 데미지, 기본 근접 무기의 갯수 or 원거리 무기의 관통 성능, 레벨 별 데미지, 레벨 별 갯수 or 관통
+            public float baseDamage; public int baseCount; public float[] damges; public int[] counts;
+        [f]. Weapon : 계속 쏘는 투사체의 프리팹
+            public GameObject projectile;
+        [g]. public class ItemData : ... 위에 
+            [CreateAssetMenu(fileName = "Item", menuName = "Scriptble Object/ItemData")]
+        [h]. UndeadSurvive 폴더에 새 폴더를 생성한다. Data
+            Scriptble Object 생성 Item 0 
+            샆을 만든다.
+                Melee, 0, 샆, 공백, Select 0, 4.5, 3, 5{0.5,1,1.5,2,3}, 5{1,1,1,1,2}, Bullet 0
+        [i]. Item 0 을 복사하여 1로
+            Range, 1, 엽총, 공백, Select 3, 3, 0, 5{0.35,0.7,1,1.4,2}, 5{1,1,2,3,4}, Bullet 1
+        [j]. 또 복사하여 2로
+            Glove, 2, 테크니컬 장갑, 공백, Select 6, 0, 0, 5{0.1,0.2,0.35,0.5,0.75}, 5{0}, None
+        [k]. 또 복사하여 3으로
+            Shoe, 3, 전투 장화, 공백, Select 7, 0, 0, 5{0.1,0.2,0.3,0.4,0.5}, 5{0}, None
+        [l]. 또 복사하여 4로
+            Heal, 4, 음료수, 공백, Select 8, 0...
+        
+    #2. 레벨업 버튼 제작
+        [a]. 캔버스 안에 빈 오브젝트를 만든다. LevelUp
+            size : 22 / 150, 앵커 오른쪽 하단
+        [b]. LevelUp의 자식으로 버튼을 만든다. Item 0
+            size : 22 / 30, 스프라이트를 Panel로 지정, 버튼의 텍스트를 Text Level로 명명, 텍스트 앵커를 가운데로
+                size : 0 / 0, overflow, 폰트 지정, 크기 5, Lv.00, y축 -9
+            Item 0의 자식으로 아이템 아이콘을 보여줄 이미지 추가
+                스프라이트를 Select 0 으로 지정, SetNativeSize, y축 3, Icon으로 명명
+        [c]. 업그레이드 버튼을 담당할 스크립트 생성 Item
+        [d]. 아이템 관리에 필요한 속성을 만든다.
+            아이템 데이터 클래스, 아이템 레벨, Weapon 클래스, 아이콘 이미지와 아이콘 텍스트
+            public ItemData data; public int level; public Weapon weapon; Image icon; Text textLevel;
+        [e]. Awake()에서 icon, textLevel을 초기화
+            자식이 가지고 있는 컴포넌트 이므로 GetComponentsInChildren으로 가져온다.
+            icon = GetComponentsInChildren<Image>()[1]; 자기 자신이 아닌 두 번째 이미지를 가져온다.
+            icon.sprite = data.itemIcon; 아이템 데이터에 저장해 둔 아이콘 이미지를 배정한다.
+            Text[] texts = GetComponentsInChildren<Text>();
+            textLevel = text[0];
+        [f]. LateUpdate()에 레벨 텍스트를 갱신하도록 한다.
+            textLevel.text = "Lv." + (level + 1);
+        [g]. LevelUp의 자식 Item 0에게 Item 스크립트 부착
+            Item 0을 Data에 삽입
+        [h]. Item 0 을 복사하여 Item 1로 명명하고 Item 1을 Data에 삽입
+        [i]. LevelUp 객체에 Vertical Layout Group 컴포넌트를 부착한다.
+        [j]. Item 0, 1, 2, 3, 4까지 만들고 스크립트블 오브젝트를 각각 연결한다.
+            Item 스크립트도 각각 부착한다.
+        [k]. Item 스크립트로 가서 임시로 레벨업 하는 로직을 추가한다.
+        [l]. 버튼 클릭 이벤트와 연결할 함수를 추가한다.
+            public void OnClick()
+            업데이트할 아이템 타입에 따라 각기 다른 로직을 실행하기 위해 switch문을 사용한다.
+                switch(data.itemType)
+        [m]. Melee와 Range는 동일한 로직을 사용하므로 case를 붙여준다.
+        [n]. switch문을 나오고 나면 레벨을 증가시키고 레벨이 최대일 경우 버튼의 Interactable을 비활성화
+            level++; if(level == data.damages.Length)
+            버튼 컴포넌트를 받아와서 비활성화 한다.
+                GetComponent<Button>().interactable = false;
+        [o]. Item 0, 1, 2, 3, 4에 각각 자신의 OnClick 함수를 연결 한다.
+            Navigation None
+
+    #3. 무기 업그레이드
+        [a]. Player의 자식인 Weapon 0, 1을 제거한다.
+        [b]. Item 스크립트에서 무기를 생성하는 로직을 추가한다.
+            OnClick으로 처음 눌릴 때 (레벨에 0일 때) 게임 오브젝트를 새롭게 만든다.
+                GameObject newWeapon = new GameObject();
+            빈 게임 오브젝트에 컴포넌트로 Weapon을 추가해 주고 속성에 저장해 준다.
+                weapon = newWeapon.AddComponent<Weapon>();
+            weapon으로 Weapon 스크립트의 초기화 함수를 호출한다.
+        [c]. Weapon스크립트의 Init()함수에 스크립트블 오브젝트를 매개변수로 받아 활용하도록 한다.
+            public void Init(ItemData data)
+            먼저 이름을 바꿔준다.
+                name = "Weapon " + data.itemId;
+            Player의 자식으로 지정한다.
+                trnasform.parent = player.transform;
+            위치를 지정해 준다.
+                transform.localPosition = Vector3.zero;
+            아이템의 아이디, 데미지, 카운트를 세팅한다.
+                id = data.itemId; damage = data.baseDamage; count = data.baseCount;
+            반복문으로 게임 매니저의 프리펩 배열을 순회하며 전달받은 데이터의 프리팹과 게임 매니저의 프리팹이 같을 때까지 반복한다. 그리고 같은 프리팹의 인덱스를 프리팹 아이디로 저장한다.
+                for(int i = 0; i < GameManager.instance.pool.prefabs.Length; i++)
+                    if(data.projectile == GameManager.instance.pool.prefabs[index])
+                        prefabId = index; break;
+        [d]. Weapon스크립트에서 임시로 Start()함수에서 Init()함수를 호출 했었는데 이제 삭제한다.
+        [e]. Awake()에서 Player를 초기화 할 때 GetComponentInParent로 초기화 했었는데, 이제 Weapon은 시작할 떄부터 Player의 자식이 아니다.
+            게임 매니저로부터 받아와 초기화 한다.
+                player = GameManager.instance.player;
+        [f]. Item 스크립트에서 이제 레벨업을 하였을 때 Init()에서 데미지와 카운트를 올려주도록 한다.
+            다음 데미지와 다음 카운트를 변수로 저장한다.
+            데미지는 기존 값에 더해 준다.
+                nextDamage += data.baseDamage * data.damages[level];
+            카운트는 증가값 만을 더한다.
+                nextCount += data.counts[level];
+        [g]. 증가한 값을 Weapon스크립트의 LevelUp함수에 전달한다.
+            weapon.LevelUp(nextDamage, nextCount);
+
+    #4. 장비 업그레이드
+        [a]. 무기를 Weapon 스크립트로 관리 했듯이 유팅 아이템오 스크립트를 통해 관리하도록 한다.
+            Gear
+        [b]. Weapon과 비슷한 구조로 만든다.
+            장비의 타입과 수치를 저장할 변수를 속성으로 만든다.
+                public ItemData.ItemType type; public float rate;
+        [c]. Init(ItemData data) 초기화 함수를 만든다.
+            name = "Gear " + data.itemId;
+            transform.parent = GameManger.instance.player.transform;
+            transform.localPosition = Vector3.zero;
+            type = data.itemType;
+            rate = data.damages[0];
+        [d]. LevelUp(float rate) 함수를 만든다.
+            this.rate = rate;
+        [e]. 공격 속도를 올려주는 함수를 만든다.
+            void RateUp()
+            플레이가 갖고 있는 모든 무기의 공격 속도를 높이기 위해 우선 플레이어가 보유한 무기 스크립트를 배열로 받는다.
+                Weapon[] weapons = transform.parent.GetComponentsIn<Children<Weapon>();
+            반복문으로 무기들을 순회하면 무기 타입에 따라 공격 속도값을 다르게 증가 시킨다.
+                foreach(Weapon weapon in weapons)
+                    switch(weapon.id)
+        [f]. 신발의 기능인 이동 속도 증가 함수를 만든다.
+            void SpeedUp()
+            먼저 지역 변수를 만들어서 기본 이동 속도를 저장한다.
+                float speed = 3;
+            플레이어의 스피드에 기본 스피드 + rate 값
+                GameManager.instance.player.speed = speed + speed * rate;
+        [g]. 무기의 타입에 따라 함수를 호출해 주는 함수를 만든다.
+            void ApplyGear()
+            switch 문으로 아이템 타입에 따라 장갑은 RateUp(), 신발이면 SpeedUp() 함수를 호출한다.
+        [h]. Init() 함수를 통해 Gear가 초기화 될 때 ApplyGear를 호출하도록 한다.
+            그리고 레벨업을 했을 때 속도rate를 증가 시키면서 ApplyGear 함수를 호출한다.
+        [i]. Item 스크립트로 가서 Gear 변수를 속성으로 만든다.
+            public Gear gear;
+            이제 다시 OnClick 함수로 가서 Glove, Shoe 레벨업 버튼이 눌렸을 때의 로직을 작성한다.
+        [j]. 레벨이 0일 때와 아닐때 제어문을 만든다.
+            무기가 빈 오브젝트를 만들고 스크립트를 넣고 Init함수를 호출했던 것을 Gear 타입으로 그대로 따라 작성한다.
+                GameObject newGear = new GameObject();
+                gear = newGear.AddComponent<Gear>();
+                gear.Init(data);
+        [k]. 레벨이 증가하였을 경우도 다음 속도를 저장하고 Gear의 레벨업에 전달한다.
+            float nextRate = data.damages[levle];
+            gear.LevelUp(nextRate);
+        [l]. BroadcastMessage : 특정 함수 호출을 모든 자식에게 방송하는 함수
+            Weapon 스크립트에서 자신이 탄생(초기화)할 때 플레이어 자식들이 가지고 있는 모든 ApplyGear 함수를 호출한다.
+            초기화 뿐만 아니라 레벨업을 할 때도 마찬가지로 호출한다.
+        [m]. SendMessageOptions.DontRequireReceiver로 BroadcastMessage를 전달할 때 매개 변수로 추가한다.
+        [n]. Heal 아이템은 일회성 아이템으로 Item 스크립트에서 바로 적용한다.
+            버튼이 눌린 아이템이 Heal일 경우에 게임 매니저에서 health를 maxHealth로 배정해 준다.
+        [o]. Heal case에서는 레벨업이 진행되지 않도록 나머지 타입에서만 break이전에 레벨업을 하도록 한다.
+*/
+
+/*
+14. 뱀서라이크 - 플레이어 무기 장착 표현하기
+
+    #1. 양손 배치
+        [a]. 플레이어의 자식으로 스프라이트를 만든다. Hand Left
+            프롭스 아틀라스에서 Weapon 0을 스프라이트로 지정한다.
+            OrderInLayer를 6으로 지정
+            위치를 손 위치로 바꿔준다. rotation도 z축으로 약간 수정해 준다. -35
+        [b]. 복사하여 Hand Right으로 만든다.
+            위치를 오른손으로 지정하고 스프라이트는 Weapon3 으로 지정한다.
+            OrderInLayer를 4로 지정
+
+    #2. 반전 컨트롤 구현
+        [a]. Hand 스크립트를 만든다.
+        [b]. 현재 손이 오른손인지 왼손인지 구분할 변수를 속성으로 갖는다.
+            public bool isLeft;
+        [c]. 스프라이트 렌더러, 플레이어의 스프라이트 렌더러를 속성으로 갖는다.
+        [d]. Awake() 함수에서 플레이어 스프라이트를 초기화 한다.
+            player.GetComponentsInParent<SpriteRenderer>()[1];
+        [e]. 왼손은 방향, 오른손은 위치에 대한 정보를 속성으로 저장한다.
+            Vector3 rightPos = new Vector3(0,34f, -0.15f, 0);
+            Vector3 rightPosReverse = new Vector3(-0.15f, -0.15, 0);
+            Quaternion leftRot = Quaternion.Euler(0, 0, -35);
+            Quaternion leftRotReverse = Quaternion.Euler(0, 0, -135);
+        [f]. 씬으로 나가서 왼손 오른손에 각각 스크립트를 부착한다.
+            public Sprite에 직접 스프라이트 렌더러를 넣어 준다.
+            왼손의 경우 isLeft를 체크한다.
+        [g]. LateUpdate()를 만들고 플레이어의 상태를 불값으로 저장한다.
+            bool isReverse = player.flipX;
+        [h]. 현재 손이 왼손인지 오른손인지 구분하여 로직을 실행한다.
+            근접무기(왼손)의 경우 플레이어를 기준으로 회전을 시킨다.
+                transform.localRotation = isReverse ? leftRotReverse : leftRot;
+            근접무기의 스프라이트 반전을 실행한다. 레이어 순서를 바꾼다.
+                spriter.flipY = isReverse;
+                spriter.sortingOrder = isReverse ? 4 : 6;
+            원거리무기(오른손)의 경우 플레이어를 기준으로 위치를 잡는다.
+                transform.localPosition = isReverse ? rightPosRevers : rightPos;
+            근접무기의 스프라이트 반전을 실행한다. 레이어 순서를 바꾼다.
+            원거리무기의 스프라이트 반전을 실행한다. 
+                spriter.flipX = isReverse;
+                spriter.sortingOrder = isReverse ? 6 : 4;
+
+    #3. 데이터 추가
+        [a]. 기존 왼손 오른손에 지정하였던 스프라이트를 None으로 지정한다.
+            그리고 손 두개를 비활성화 한다.
+        [b]. ItemData 스크립트에 데이터를 추가한다.
+            public Sprite hand;
+        [c]. 스크립트블 오브젝트에서 아이템 0과 1이 무기 오브젝트이다.
+            아이템 데이터 속성에 스프라이트를 넣어 준다.
+
+    #4. 데이터 연동
+        [a]. Player 스크립트에서 속성으로 만들어 보관하도록 한다.
+            public Hand[] hands;
+        [b]. Awake()에서 초기화 한다.
+            hands = GetComponentsInChildren<Hand>(true);
+            비활성화 시켜놓은 오브젝트는 GetComponent로 받아지지 않으므로 매개변수로 true를 전달한다.
+        [c]. Weapon 스크립트로 가서 무기가 생성될 때 초기화 함수가 무조건 호출되는데 이 때 손을 출력하도록 한다.
+            손 오브젝트를 가져온다.
+                Hand hand = player.hands[(int)data.itemType];
+            가져온 손에 스프라이트를 적용 시킨다.
+                hand.spriter.sprite = data.hand;
+                hand.gameObject.SetActive(true);
+*/
