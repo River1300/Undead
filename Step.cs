@@ -1043,3 +1043,305 @@
                 hand.spriter.sprite = data.hand;
                 hand.gameObject.SetActive(true);
 */
+
+/*
+15. 뱀서라이크 - 레벨업 시스템
+
+    #1. UI 완성하기
+        [a]. 캔버스에 이미지를 만든다.
+            바탕 이미지로 활용하기 위해 앵커를 바득 채우고 검은색으로 하고 알파값을 150으로 낮춘다.
+            LevelUp으로 명명
+            기존 LevelUpUI는 ItemGroup으로 명명
+        [b]. LevelUp에 이미지를 만든다. 
+            스프라이트를 Panel로 지정한다.
+            100 / 130 사이즈, 색을 녹색으로 지정
+            Panel로 명명
+        [c]. Panel에 Text를 만든다.
+            앵커는 상단을 가득 채운다.
+            중앙 정렬로 하고 height는 -3, 폰트를 neodgm, 사이즈 8, 색 흰색
+            Shadow 컴포넌트 부착, x 0.5, y -0.5
+            축하합니다! 레벨이 상승했습니다.
+            Text Title로 명명
+        [d]. ItemGroup을 Panel 자식으로 옮긴다.
+            앵커를 화면이 꽉차게 지정한다.
+            ItemGroup의 자식인 Item 0,1,2,3,4이미지를 맞추기 위해 컴포넌트 VerticalLayoutGroup에서
+                ControlChildSize : Width, Height를 체크하여 자식 오브젝트를 자신의 크기에 맞게 자동 변경 시킨다.
+                Spacing을 1로 준다.
+            좌우,아래 여백 5, 위 25
+            Item 3, 4는 비활성화 한다.
+        [e]. Item 0의 Icon의 앵커를 왼쪽을 붙인다. xy 여백을 6/3
+            Text Level의 폭을 18로 지정하고 앵커를 왼쪽으로 붙인다. xy여백을 6/-10
+            텍스트 레벨을 복사하여 Text Name으로 명명
+                폰트 사이즈 7로 지정 텍스트 왼쪽 정렬, x여백 27, y여백 6
+                아이템 이름
+            텍스트 네임을 복사하여 Text Desc로 명명
+                폰트 사이즈 5로 지정, y여백 -7
+            텍스트를 각각 다른 색으로 지정
+        [f]. Item 1, 2, 3, 4를 모두 지운다.
+            Item 0 을 복사한다. Item 0, 1, 2, 3, 4
+            데이터 속성에 스크립트블 오브젝트를 넣어 준다.
+            Item 3, 4는 비활성화
+
+    #2. 아이템 텍스트
+        [a]. 스크립트블 오브젝트에 아이템 설명란은 모두 공백으로 두었다.
+        [b]. ItemData 스크립트로 가서 itemDesc 속성을 찾는다.
+            바로 윗줄에 인스펙터 창에서 텍스트를 여러 줄 넣을 수 있게 TextArea 속성을 부여한다.
+                [TextArea]
+        [c]. 스크립트블 오브젝트에 Item Desc 항목을 채운다.
+            데미지 {0}% 증가    데미지 {0}% 증가    연사속도 {0}% 증가  이동속도 {0}% 증가  생명력 전체 회복
+            회전체 {1}개 추가   관통력 {1} 증가
+        [d]. 아이템 이름과 설명을 UI창에 띄운다.
+            Item 스크립트에서 로직을 추가한다.
+        [e]. 속성으로 아이템 이름과 설명을 만든다.
+            Text textName; Text textDesc;
+            Awake()에서 초기화 한다.
+                GetComponents의 순서는 계층구조의 순서를 따라가므로 배열의 인덱스를 하이어라키 창에 등록된 순서로 지정하면 된다.
+                textName = texts[1]; textDesc = texts[2];
+                textName.text = data.itemName;
+        [f]. 활성화 함수를 만든다. OnEnable()
+            LateUpdate()에서 실행하던 레벨 출력 로직을 활성화 함수로 옮긴다.
+            LateUpdate()는 지운다.
+        [g]. 아이템 설명을 매개 변수를 통해서 데이터에 문자열로 저장할 것이다.
+            textDesc.text = string.Format(data.itemDesc, data.damages[level] * 100, data.counts[level]);
+            이때 무기는 설명이 2줄이기 때문에 switch문으로 구분하여 각기 다른 설명을 저장한다.
+
+    #3. 창 컨트롤
+        [a]. LevelUp 오브젝트의 크기를 0 ~ 1로 변형 시켜 나타나게 할 예정
+            LevelUp 스크립트를 생성한다.
+        [b]. UI이므로 RectTransform을 속성으로 갖는다.
+            RectTransform rect;
+        [c]. Awake()함수에서 초기화 한다.
+            rect = GetComponent<RectTransform>();
+        [d]. 창을 띄우는 함수와 숨기는 함수를 만든다.
+            public void Show() public void Hide()
+        [e]. rect.localScale = Vector3.one; rect.localScale = Vector3.zero;
+        [f]. 레벨업을 관리하는 게임 매니저가 Show 함수를 호출한다.
+            속성으로 게임 오브젝트를 받는다.
+                public LevelUp uiLevelUp;
+        [g]. 씬으로 나가 LevelUp오브젝트에 스크립트를 부착한다.
+            게임 매니저 속성에 LevelUp 오브젝트를 넣어 준다.
+        [h]. 게임 매니저 스크립트로 가서 레벨업을 하는 구간 GetExp에서 Show 함수를 호출한다.
+        [i]. Item 0, 1, 2, 3, 4의 OnClick을 추가하여 LevelUp 오브젝트를 넣는다.
+            Hide 함수는 레벨업 버튼이 눌렸을 때 호출되게 한다.
+
+    #4. 기본 무기 지급
+        [a]. LevelUp 스크립트에서 근접 무기를 가져오도록 한다.
+            속성으로 Item[] 배열을 받는다.
+                Item[] items;
+            Awake() 함수에서 초기화 한다.
+                items = GetComponentsInChildren<Item>(true);
+        [b]. 0번째 무기를 선택하여 불러오는 함수를 만든다.
+            public void Select(int index)
+            해당 아이템의 클릭을 로직으로 실행 한다.
+                items[index].OnClick();
+        [c]. 게임 매니저가 Start()함수에서 임시로 Select 함수를 호출한다.
+            uiLevelUp.Select(0);
+
+    #5. 시간 컨트롤
+        [a]. 레벨업을 할 때 시간이 정지하도록 게임 매니저에서 시간을 관리하도록 한다.
+        [b]. 시간을 멈출지 체크할 bool 속성을 만든다.
+            public bool isLive;
+        [c]. 시간을 컨트롤 하는 함수를 만든다.
+            public void Stop() public void Resume()
+        [d]. Stop에서는 isLive = false가 되고 게임에서 진행되는 시간을 멈춘다.
+            Time.timeScale = 0;
+        [e]. Resume() 함수는 반대로 한다.
+        [f]. LevelUp 스크립트에서 레벨업을 할 떄 시간 조정 함수를 호출한다.
+            Show() GameManager.instance.Stop();
+            Hide() GameManager.instance.Resume();
+        [g]. isLve를 사용하여 멈춰야 할 다른 객체에 모두 적용한다.
+            스크립트들의 Update/FixedUpdate 함수를 모두 살피며 제어문을 만든다.
+                GameManager, Player, Enemy, Spawner, Weapon
+        [h]. 씬으로 나가서 게임 매니저의 isLive를 체크해 준다.
+
+    #6. 랜덤 아이템
+        [a]. LevelUp 스크립트에서 Next() 함수로 모든 아이템을 비활성화 하고 이 중 3개만 랜덤하게 활성화 한다.
+            이때 만렙 아이템은 소비아이템으로 대체한다.
+        [b]. 반복문으로 아이템을 순회 한다.
+            foreach(Item item in items)
+            순회 하며 전부 비활성화 한다.
+                item.gameObject.SetActive(false);
+        [c]. 중복되지 않는 정수형 배열을 만든다.
+            int[] ran = new int[3];
+            무한 반복을 진행 하며 랜덤한 값을 받는다.
+                ran[0] = Random.Range(0, items.Length);
+                ran[1] = Random.Range(0, items.Length);
+                ran[2] = Random.Range(0, items.Length);
+            값이 서로 다른지 확인하고 반복문을 탈출한다.
+                if(ran[0] != ran[1] && ran[1] != ran[2] && ran[0] != ran[2])
+        [d]. 반복문을 돌며 랜덤한 아이템을 Item 스크립트로 저장하고 활성화 한다.
+            for(int i = 0; i < ran.Length; i++)
+                Item ranItem = items[ran[index]];
+            만렙일 경우 소비아이템으로 대체하기 위해 제어문을 만든다.
+                if(ranItem.level == ranItem.data.damages.Length)
+                    items[Random.Range(4, items.Length)].gameObject.SetActive(true);
+        [e]. 창을 띄우는 함수에서 Next()함수는 Show() 함수에서 호출한다.
+        [f]. 이제 무한 레벨을 만들어야 한다.
+            게임 매니저에서 레벨업을 할 때의 조건으로 최대 레벨일 경우 항상 최고 경험치를 넘겨야 다음 레벨이 되도록 한다.
+                if(exp == nextExp[Mathf.Min(level, nextExp.Length - 1)])
+            HUD 스크립트에서 경험치 바를 출력할 때에도 무한 레벨을 위해 최대 경험치를 확인하여 출력한다.
+                float maxExp = GameManager.instance.nextExp[Mathf.Min(GameManager.instance.level, GameManager.instance.nextExp.Length - 1)];
+*/
+
+/*
+16. 뱀서라이크 - 게임 시작과 종료
+
+    #1. 게임 시작
+        [a]. 게임 매니저의 isLive 속성을 체크 해제 한다.
+            로직을 통해 게임 시작을 하도록 할 예정이다.
+        [b]. 캔버스에서 빈 오브젝트를 만든다. GameStart
+            GameStart의 자식으로 Image를 만든다.
+                Title 이미지를 UI 아틀라스에서 Title 0 을 스프라이트로 배치한다.
+                scale 1.5
+                Shadow 컴포넌트 추가, 알파값 조정
+                y축 40
+        [c]. GameStart의 자식으로 버튼을 만든다. Button Start
+            사이즈 60/20, 판넬 스프라이트
+            Navigation None
+            게임 시작, font size 10
+            OutLine 컴포넌트 부착 distance 0.6
+            위치 -40
+            Button에 Shadow 컴포넌트 부착
+        [d]. 게임 시작 버튼이 눌리면 게임 시작 관련 UI는 숨겨져야 한다.
+            Button Start의 OnClick에 GameStart를 넣는다.
+                GameObject -> SetActive
+        [e]. 게임 시작 전에는 HUD를 감추어 두도록 한다.
+            캔버스에 빈 오브젝트를 만들고 HUD로 명명
+                Exp, Level, Kill, Timer, Health를 HUD자식으로 이전
+            GameStart -> Button Start의 OnClick에 HUD를 넣는다.
+                GameObject -> SetActive , 체크
+            HUD를 비활성화 시켜 놓는다.
+        [f]. 게임 매니저에서 게임 실행 로직을 추가한다.
+            기존의 Start() 함수를 GameStart() 함수로 바꾸고 public을 붙착하여 버튼에 연결한다.
+            isLive = true;
+        [g]. 다시 Button Start에 게임 매니저를 넣고 GameStart 함수를 호출한다.
+
+    #2. 플레이어 피격
+        [a]. 플레이어 스크립트에서 피격 함수를 만든다.
+            OnCollisionStay2D
+            가장 먼저 isLive 상태를 체크하여 반환한다.
+        [b]. 게임 매니저의 health를 감소시킨다.
+            이때 프레임마다 체력이 감소하게 한다.
+                GameManager.instance.health -= Time.deltaTime * 10;
+                타입을 맞추기 위해 게임 매니저의 health와 maxHealth의 타입을 float로 바꾼다.
+        [c]. health가 0보다 작아지면 플레이어가 사망한다.
+            플레이어가 사망하면 사망 애니메이션이 출력되면서 플레이어 객체의 자식을 비활성화 시킨다.
+            반복문으로 제거할 자식 인덱스 부터 반복을 시작하여 끝까지 돌며 비활성화 한다.
+                for(int index = 2; index < transform.childCount; index++)
+                    transform.GetChild(index).gameObject.SetActive(false);
+            비활성화 이후에 파라미터 전달
+                anim.SetTrigger("Dead");
+
+    #3. 게임 오버
+        [a]. GameStart를 복사하여 GameResult로 명명
+            Title을 게임 오버 Title(Title2)로 바꿔준다.
+            버튼 이름을 Button Retry로 명명
+            OnClick에 지정되어있던 함수들을 모두 제거한다.
+            돌아가기
+        [b]. 게임 매니저에서 재시작 함수를 만든다.
+            public void GameRetry()
+            장면을 새롭게 불러온다.
+                SceneManagement 네임 스페이스를 추가
+                SceneManager.LoadScene(0);
+        [c]. 게임 매니저에 게임 오버 함수를 만든다.
+            public void GameOver()
+            코루틴 함수를 만든다. GameOverRoutine()
+                isLive = false;
+                yield return new WaitForSeconds(0.5f);
+                uiResult.SetActive(true);
+                Stop();
+        [d]. 재시작 UI를 활성화 하기 위해 GameObject로 속성을 받는다.
+            public GameObject uiResult;
+                씬에서 바로 넣는다.
+        [e]. 이제 플레이어 스크립트로 가서 애니매이션이 출력되고 게임 매니저에서 게임 오버 함수를 호출하도록 한다.
+        [f]. Button Retry에 게임 매니저를 넣고 GameRetry함수를 호출한다.
+
+    #4. 게임 승리
+        [a]. 빈 오브젝트 생성 EnemyCleaner
+            박스 콜라이더 추가 : size를 모든 몬스터 들이 다 들어갈 정도로 크게 1000/1000
+            Bullet 스크립트 추가 : damage 1000000지정 per -1
+            태그를 Bullet, 트리거
+            비활성화 시켜 놓는다.
+        [b]. GameResult 의 자식 이미지 Title을 Title Over로 명명하고 복사
+            Title Victory
+                Title 1으로 스프라이트 교체
+        [c]. 게임이 종료될 때 승리하면 Title Victort를 패배하면 Title Over를 출력하도록 스크립트를 만든다.
+            Result 스크립트를 GameResult에 부착한다.
+        [d]. 게임 오브젝트 배열로 타이틀 2개를 받는다.
+            public GameObject[] titles;
+            패배, 승리 함수를 만든다.
+            public void Lose() public void Win()
+            패배일 때는 패배 타일틀을, 승리했을 때는 승리타이틀을 활성화 한다.
+        [e]. 게임 매니저에 속성으로 두었던 uiResult의 타입을 스크립트 Result로 바꾼다.
+            게임 오버 루틴에서 재시작 오브젝트를 활성화 할 때 Lose() 함수를 호출한다.
+        [f]. 씬에서 게임 매니저에 Result 오브젝트를 넣는다.
+            GameResult에는 패배와 승리 타이틀을 배열에 넣는다.
+        [g]. 게임 매니저에서 게임 오브젝트로 EnemyCleaner를 받는다.
+            public GameObject enemyCleaner
+            게임 승리 함수를 만든다.
+            public void GameVictory()
+            GameOverRoutine을 복사하여 GameVictoryRoutine으로 활용한다.
+                추가로 몬스터를 청소하는 EnemyCleaner를 활성화 시킨다.
+                0.5초 쉬었다고 Result의 Win()함수를 호출한다.
+        [h]. Update()함수에서 maxGameTime을 초과했을 때 승리를 호출한다.
+            GameVictory();
+        [i]. 재시작을 할 때 이전 코루틴 함수로 Stop함수가 호출되어 시간이 정지되어 버리는데 이 시간을 다시 활성화 하기 위해 게임 스타트 함수에서 Resume() 함수를 호출한다.
+        [j]. EnemyCleaner를 통해 몬스터를 모두 죽일 때 경험치를 획득하지 못하도록 GetExp 함수에 isLive 제어문을 추가한다.
+        [k]. 씬에서 타이틀 2개, 재시작 오브젝트를 비활성화 해둔다. 게임 시작 오브젝트를 활성화 한다.
+*/
+
+/*
+17. 뱀서라이크 - 플레이어 캐릭터 선택
+
+    #1. 캐릭터 선택 UI
+        [a]. 캔버스의 게임 시작 오브젝트의 자식으로 빈 오브젝트를 만든다.
+            Character Group 위치 y출 -40, 101/101
+            Grid Layout Group 컴포넌트를 부착한다.
+                50/50, 1/1
+            이전에 만들어 두었던 Button Start 버튼을 Character Group의 자식으로 이전한다.
+                Character 0으로 명명
+                버튼의 자식으로 이미지를 만든다.
+                    Stand 0 을 스프라이트로 배치
+                    y축 8
+                    Icon으로 명명 
+                Character 0의 Text는 Text Name으로 명명
+                    벼농부, 폰트 사이즈 8, 앵커를 가운데 가득 채움
+                    여백 좌우 2, y축 8
+                Text Name을 복사하여 Text Adv로 명명
+                    y출 -16, 폰트 사이즈 5, 이동속도 10% 증가
+        [b]. Character 0 을 복사하여 1로 명명
+            스프라이트, 버튼 색, 이름, 설명을 바꿔준다.
+                보리농부
+
+    #2. 선택 적용하기
+        [a]. 선택한 캐릭터가 0번 인덱스인지 1번 인덱스인지 게임 매니저에게 전달하기 위해 게임 매니저 스크립트로 간다.
+        [b]. 캐릭터 ID를 저장할 변수를 속성으로 갖는다.
+            public int playerID;
+        [c]. 기존에 만들어 두었던 GameStart함수를 수정한다. 매개 변수로 id를 받는다.
+            playerId = id;
+            기본 무기 지급은 playerId에 따라 지급한다.
+            uiLevelUp.Select(playerId);
+        [d].
+        [e].
+        [f].
+        [g].
+        [h].
+        [i].
+        [j].
+        [k].
+        [l].
+
+    #3. 캐릭터 특성 로직
+        [a].
+        [b].
+        [c].
+        [d].
+        [e].
+        [f].
+        [g].
+        [h].
+        [i].
+        [j].
+        [k].
+        [l].
+*/
