@@ -1311,7 +1311,7 @@
                     y출 -16, 폰트 사이즈 5, 이동속도 10% 증가
         [b]. Character 0 을 복사하여 1로 명명
             스프라이트, 버튼 색, 이름, 설명을 바꿔준다.
-                보리농부
+                보리농부, 연사속도 10% 증가
 
     #2. 선택 적용하기
         [a]. 선택한 캐릭터가 0번 인덱스인지 1번 인덱스인지 게임 매니저에게 전달하기 위해 게임 매니저 스크립트로 간다.
@@ -1320,7 +1320,201 @@
         [c]. 기존에 만들어 두었던 GameStart함수를 수정한다. 매개 변수로 id를 받는다.
             playerId = id;
             기본 무기 지급은 playerId에 따라 지급한다.
-            uiLevelUp.Select(playerId);
+            uiLevelUp.Select(playerId % 2);
+        [d]. 플레이어를 비활성화 해 두었다가 게임 시작시 나타나게 한다.
+            player.gameObject.SetActive(true);
+        [e]. 캐릭터 별로 다른 스프라이트, 스프라이트 애니메이션이 출력되도록 Player 스크립트에 속성으로 만들어 둔다.
+            public RuntimeAnimatorController[] animCon;
+                씬으로 나가서 애니메이션 컨트롤러를 배열에 집어 넣는다.
+        [f]. 활성화 될 때 애니메이터에 선택된 playerId의 애니메이터를 배정하도록 한다.
+            anim.runtimeAnimatorController = animCon[GameManager.instance.playerId];
+        [g]. Character Group의 자식들, Character 0, 1 버튼에 OnClick을 연결 한다.
+            GameManager의 GameStat() 함수를 연결하고 매개변수를 전달한다.
+
+    #3. 캐릭터 특성 로직
+        [a]. 캐릭터 특성을 관리할 스크립트 생성 Character
+        [b]. 보정 값을 static으로 만든다.
+            public static float Speed { get { return GameManager.instance.playerId == 0 ? 1.1f : 1f; } }
+        [c]. Player 스크립트로 가서 Character 클래스의 static 변수를 사용하도록 한다.
+            OnEnable 함수에서 Player의 속도와 보정 값을 곱해 준다.
+                speed *= Character.Speed;
+        [d]. Gear 스크립트로 가서 SpeedUp() 함수에서도 이동 속도 보정을 해준다.
+            float speed = 3 * Character.Speed;
+        [e]. 다양한 캐릭터의 특수 능력을 static으로 만들어 보자
+            WeaponSpeed, WeaponRate, Damage, Count
+        [f]. Weapon 스크립트로 가서 무기 관련 보정 값을 추가한다.
+            Init 함수에서 근접 무기의 회전 속도를 지정 했었다.
+                speed = 150 * Character.WeaponSpeed;
+            연사 속도
+                speed = 0.5f * Character.WeaponRate;
+        [g]. Gear 스크립트에서도 회전 속도와 연사 속도를 보정한다.
+            float speed = 150 * Character.WeaponSpeed;
+            weapon.speed = speed + (speed * rate);
+            speed = 0.5f * Character.WeaponRate;
+            weapon.speed = speed * (1f - rate);
+        [h]. Weapon 스크립트에서 Init함수를 통해 데미지, 관통을 보정한다.
+            damage = data.baseDamage * Character.Damage;
+            count = data.baseCount + Character.Count;
+            LevelUp 함수에서 레벨업 할 때도 보정 값을 적용 한다.
+*/
+
+/*
+18. 뱀서라이크 - 캐릭터 해금 시스템
+
+    #1. 추가 캐릭터 버튼
+        [a]. 기존에 있던 Character 0, 1에서 복사를 하여 2개 더 만든다.
+            Icon에서 Stand 스프라이트 변경
+            감자농부 콩농부, 공격력 20% 증가, 회전, 관통 1 추가
+            버튼 색 변경
+            버튼의 인덱스 수정
+
+    #2. 잠금과 해금
+        [a]. Character 2를 복사하여 Character 2(Lock)로 명명
+            Character 2는 비활성화 시켜 놓는다.
+            Character 2(Lock)의 Button 컴포넌트를 지운다.
+            이미지 색을 회색으로, Icon의 색을 검은 색으로, 이름 Text를 지운다.
+            캐릭터 능력 Text를 해금 조건으로 바꾼다. 언데드 10마리 처치 시 합류
+            Outline 컴포넌트도 지우고 텍스트 색을 검은 색으로
+        [b]. Character 3(Lock)를 만든다.
+            어느 누구나 생존 성공시 합류
+        [c]. AchiveManager 로 스크립트 생성
+            빈 오브젝트를 만들고 AchiveManager라 명명, 스크립트 부착
+        [d]. 속성으로 잠금된 버튼과 해금된 버튼을 담을 게임 오브젝트 배열을 만든다.
+            public GameObject[] lockCharacter; public GameObject[] unlockCharacter;
+            씬으로 나가서 배열에 각각의 Character 2, 3, (lock)를 넣어 준다.
+        [e]. 업적을 enum으로 관리한다.
+            enum Achive { UnlockPotato, UnlockBean }
+            Achive[] achives;
+            Awake() 에서 초기화 한다.
+                achives = (Achive[])Enum.GetValues(typeof(Achive));
+        [f]. 저장 데이터를 초기화 할 함수를 만든다.
+            void Init()
+            저장 기준 값을 저장
+                PlayerPrefs.SetInt("MyData", 1);
+            업적 이름을 Key값으로 하여 저장해 둘 수 있는데, 더 많아 질 수 있으니
+                PlayerPrefs.SetInt("UnlockPotato", 0); PlayerPrefs.SetInt("UnlockBean", 0);
+            반복문으로 속성 achives를 순회 하면서 모든 업적을 초기화 한다.
+                foreach(Achive achive in achives)
+                    PlayerPrefs.SetInt(achive.ToString(), 0);
+        [g]. Awake() 함수에서 MyData가 저장되어 있지 않을 경우 Init함수를 호출하여 초기화 한다.
+            if(!PlayerPrefs.HasKey("MyData"))
+        [h]. 해금 함수를 만든다. UnlockCharacter
+            잠금 버튼 배열을 순회하면서 인덱스에 해당하는 업적 이름을 가져온다.
+                string achiveName = achives[index].ToString();
+            0으로 저장해 두었던 업적이 1이 되었는지 체크 한다.
+                bool isUnlock = PlayerPrefs.GetInt(achiveName) == 1;
+            bool 지역 변수를 통해 버튼을 활성화 한다.
+                lockCharacter[index].SetActive(!isUnlock);
+                unlockCharacter[index].SetActive(isUnlock);
+        [i]. Edit -> Clear All PlayerPrefs로 데이터를 지우고 테스트를 진행한다.
+
+    #3. 업적 달성 로직
+        [a]. AchiveManager에서 해금 조건을 확인한다.
+            LateUpdate() 함수에서 해금을 확인하도록 한다.
+        [b]. 업적 달성을 위한 함수를 만든다.
+            void CheckAchive(Achive achive)
+        [c]. LateUpdate()에서 프레임마다 모든 업적을 확인하기 위해 반복문을 돈다.
+            foreach(Achive achive in achives)
+                CheckAchive(achive);
+        [d]. CheckAchive에서 어느 업적이 활성화 되었는지 확인 작업을 실시 한다.
+            지역 변수로 성공 실패 값을 저장할 수 있게 한다.
+                bool isAchive = false; 
+            switch문으로 매개변수로 전달받은 업적에 따라 다른 로직을 실행 한다.
+                isAchive = GameManager.instance.kill >= 10;
+                isAchive = GameManager.instance.gameTime == GameManager.instance.maxGameTime;
+        [e]. 지역 변수가 true를 저장하고 PlayerPrefs에  전달 받은 매개 변수가 아직 해금되지 않았다면 업적 해금을 저장한다.
+            if(isAchive && PlayerPrefs.GetInt(achive.ToString()) == 0)
+
+    #4. 해금 알려주기
+        [a]. 캔버스에서 Image를 만든다.
+            스프라이트에 판넬을 등록한다.
+        [b]. 크기 : 50/27, 앵커 오른쪽 상단, 여백 -3/-20
+            Notice로 명명, Shadown 컴포넌트 부착
+        [c]. Notice의 자식으로 빈 오브젝트를 만든다. UnlockPotato
+            UnlockPotato 자식으로 이미지를 만든다.
+                감자 농부 스프라이트를 등록한다.
+                앵커 왼쪽, 여백 1/1
+                Icon으로 명명
+            자식으로 텍스트를 만든다.
+                앵커 중앙 채움, 가운데 정렬, 좌우 여백 20/1, 폰트, 감자농부가 다음 전투에 함류합니다.
+        [d]. UnlockPotato를 복사하여 UnlockBean으로 명명
+            스프라이트 변경
+        [e]. Notice의 자식 둘을 모두 비활성화 한다. 그리고 Notice도 비활성화 한다.
+        [f]. AchiveManager에게 속성이 되어 들어간다.
+            public GameObject uiNotice;
+        [g]. CheckAchive() 함수에서 조건을 달성하는 순간 코루틴으로 알림창을 띄웠다가 숨길 것이다.
+            NoticeRoutine()
+            WaitForSecondsRealtime 속성을 만든다. wait;
+        [h]. Awake()에서 초기화 한다.
+            wait = new WaitForSecondsRealtime(5);
+        [i]. 다시 코루틴에서 속성을 활용하여 쉬도록 한다.
+            uiNotice활성화
+            yield return wait;
+            uiNotice비활성화
+        [j]. 어떤 안내문을 띄울지 CheackAchive함수에서 조건을 달성할 때 활성화 시킨다.
+            반복문으로 Notice의 자식들을 순회 하면서 조건에 맞는 자식을 활성화 한다.
+            bool 지역 변수를 만들어서 반복문 인덱스와 조건을 달성한 achive의 값이 같은지를 저장한다.
+                bool isAchive = index == (int)achive;
+                uiNotice.transform.GetChild(index).gameObejct.SetActive(isAchive);
+*/
+
+/*
+19. 뱀서라이크 - 편리한 오디오 시스템 구축
+
+    #1. 유니티의 오디오
+        [a]. 오디오 클립 : 오디오 및 사운드 파일 에셋 타입
+        [b]. 빈 오브젝트를 만든다. AudioManager
+            클립을 드래그 드랍
+        [c]. 오디오소스 : 에셋인 오디오 클립을 재생시켜주는 컴포넌트
+        [d]. 오디오리스너 : 장면에서 재생 중인 오디오를 듣는 컴포넌트
+
+    #2. 오디오 매니저
+        [a]. 오디어 매니저에 부착한 오디오 소스를 지운다.
+        [b]. 오디오매니저 스크립트를 만들고 부착한다.
+        [c]. 어느 클래스에서든 사용할 수 있도록 정적 메모리에 담는다.
+            public static AudioManager instance;
+            Awake()
+                instance = this;
+        [d]. 속성을 구분하기 위해 헤더로 BGM을 만든다.
+            [Header("#BGM")]
+            배경음과 관련된 클립, 볼륨, 오디오소스를 속성으로 갖는다.
+            public AudioClip bgmClip; public float bgmVolume; AudioSource bgmPlayer;
+        [e]. 다음으로 효과음을 헤더로 만든다.
+            [Header("SFX")]
+            배경음과 일부 동일하다. 추가로 채널 시스템이 있다.
+            public AudioClip[] sfxClip; public float sfxVolume; public int chennels; AudioSource[] sfxPlayer; int chennelIndex;
+        [f]. 오디오를 초기화할 Init함수를 만든다.
+        [g]. 배경음 플레이어 초기화, 효과음 플레이어 초기화
+            게임 오브젝트를 지역 변수로 만들고 초기화 한다.
+                GameObject bgmObject = new GameObject("BgmPlayer");
+            배경음을 담당할 자식 오브젝트를 만든다.
+                bgmObject.transform.parent = transform
+            오브젝트에 오디오소스를 생성하고 변수에 저장한다.
+                bgmPlayer = bgmObject.AddComponent<AudioSource>();
+            캐릭터를 선택할 때부터 bgm을 출력한다.
+                bgmPlayer.playOnAwake = false;
+                bgmPlayer.loop = true;
+                bgmPlayer.volume = bgmVolume;
+                bgmPlayer.clip = bgmClip;
+        [h]. 효과음
+            GameObject sfxObject = new GameObject("SfxPlayer");
+            sfxObject.transform.parent = transform;
+            채널값을 사용하여 오디오 소스 배열 초기화
+                sfxPlayer = new AudioSource[channels];
+            배열의 원소를 반복문으로 초기화 한다.
+                sfxPlayer[index] = sfxObject.AddCompoenet<AudioSource>();
+                sfxPlayer.playOnAwake = false;
+                sfxPlayer.volume = sfxVolume;
+        [i]. 씬으로 나가서 속성에 값을 채워 준다.
+            채널 갯수는 16개 정도로 지정한다.
+        [j].
+        [k].
+        [l].
+
+    #3. 효과음 시스템
+        [a].
+        [b].
+        [c].
         [d].
         [e].
         [f].
@@ -1331,7 +1525,7 @@
         [k].
         [l].
 
-    #3. 캐릭터 특성 로직
+    #4. 배경음 시스템
         [a].
         [b].
         [c].
