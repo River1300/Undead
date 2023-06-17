@@ -1507,35 +1507,170 @@
                 sfxPlayer.volume = sfxVolume;
         [i]. 씬으로 나가서 속성에 값을 채워 준다.
             채널 갯수는 16개 정도로 지정한다.
-        [j].
-        [k].
-        [l].
 
     #3. 효과음 시스템
-        [a].
-        [b].
-        [c].
-        [d].
-        [e].
-        [f].
-        [g].
-        [h].
-        [i].
-        [j].
-        [k].
-        [l].
+        [a]. 효과음을 sfx 클립 배열에 넣는다.
+        [b]. 열거형으로 효과음을 이름으로 지정한다.
+            public enum Sfx { Dead, Hit, LevelUp=3, Lose, Melee, Range=7, Select, Win }
+        [c]. 효과음 재생 함수를 만든다. PlaySfx(Sfx sfx)
+            준비해둔 sfxPlayers에 매개 변수로 전달받은 효과음 종류의 클립을 저장한다.
+                sfxPlayers[0].clip = sfxClips[(int)sfx];
+            저장된 클립을 실행한다.
+        [d]. 반복문을 만들어서 현재 클립을 재생하고 있지 않는 sfxPlayers를 찾아서 위의 플레이 로직을 실행하고자 한다.
+            int loopIndex = (index + channelIndex) % sfxPlayers.Length;
+            if(sfxPlayers[loopIndex].isPlaying)
+                continue;
+            channelIndex = loopIndex;
+            sfxPlayers[loopIndex]...
+            ... break;
+        [e]. 게임 매니저에서 재생 함수를 사용한다.
+            GameStart()에서 게임이 시작됬을 때 버튼 클릭 효과음이 출력된다.
+                AudioManager.instance.PlaySfx(AudioManager.Sfx.Select);
+            GameOver 코루틴에서 게임 오버 Lose 효과음 출력
+            GameVictort 코루틴에서 Win 효과음 출력
+        [f]. AchiveManager 에서 알람이 뜰 때 NoticeRoutine에서 LevelUp
+        [g]. LevelUp 스크립트의 Show, Hide에서 LevelUp, Select
+        [h]. Weapon 에서 Fire 로 발사할 때 Range
+        [i]. Enemy 스크립트에서 맞을 때 Hit, 죽을 때 Dead
+            그런데 플레이어가 승리할 때 모든 몬스터가 한꺼번에 죽게되는데 이때는 효과음을 실행하지 않는다.
+                if(GameManager.instance.isLive) 일때만 효과음 실행
 
     #4. 배경음 시스템
-        [a].
-        [b].
-        [c].
-        [d].
-        [e].
-        [f].
-        [g].
-        [h].
-        [i].
-        [j].
-        [k].
-        [l].
+        [a]. 배경 음악을 BGM 클립에 넣는다.
+        [b]. 오디오 매니저에서 효과음 플레이어 함수처럼 브금 플레이어 함수를 만든다.
+            public void PlayerBgm(bool isPlay)
+        [c]. 제어문을 만들어 isPlay 상태이면 BGM을 플레한다. 아닐때는 BGm을 멈춘다.
+            bgmPlayer.Play();
+        [d]. 게임 매니저의 게임 시작 함수와 끝 함수에서 브금 플레이어 함수를 호출한다.
+        [e]. 메인 카메라에 Audio High Pass Filter 컴포넌트를 부착한다.
+            비활성화 시켜 놓는다.
+        [f]. 오디오 매니저에 컴포넌트를 속성으로 받는다.
+            AudioHighPassFilter bgmEffect; 
+            Init 함수에서 카메라로 부터 컴포넌트를 받는다.
+                bgmEffect = Camera.main.GetComponent<AudioHighPassFilter>();
+        [g]. 오디오 필터를 온오프 할 함수를 만든다.
+            public void EffectBgm(bool isPlay)
+                bgmEffect.enabled = isPlay;
+        [h]. LevelUp 스크립트에서 레벨업 창을 띄우고 숨기는데 효과음을 각각 낼 때 온오프 함수를 호출한다.
+        [i]. 효과음은 이 필터에 영향을 받지 않게 위해 오디오 매니저의 효과음 초기화에 로직을 추가한다.
+            sfxPlayers[index].bypassListenerEffects = true;
+*/
+
+/*
+20. 뱀서라이크 - 로직 보완하기
+
+    #1. 무한맵 재배치 보완
+        [a]. Reposition 스크립트 : 플레이어의 위치에 따라 맵의 판이 플레이어의 이동 방향으로 위치가 바뀌는 로직
+        [b]. 플레이어의 입력을 바탕으로 맵의 위치를 지정하다 보니 다양한 예외상황이 발생
+            플레이어의 입력을 통한 위치 지정을 지운다.
+        [c]. 플레이어와의 거리를 구하고 방향을 구한다.
+        [d]. 거리의 차이를 통해서 맵의 위치를 바꿔준다.
+
+    #2. 몬스터 재배치 보완
+        [a]. 플레이어와 몬스터간의 거리를 찾아 낸다.
+        [b]. 거리를 몬스터의 이동 거리에 전달한다.
+        [c]. 이동 거리에 * 2를 하면 플레이어의 영역에서 벗어난 몬스터가 반대쪽으로 순간이동 된다.
+        [d]. 약간의 랜덤 값을 구하여 거리의 차이에 더해 준다.
+
+    #3. 투사체 멈춤 보완
+        [a]. Bullet 스크립트 : 샆, 총알, 몬스터 클리너의 데미지 및 기타 공격을 담당하는 로직
+        [b]. 샆의 경우 관통력이 -1로 값을 갖고 있다.
+        [c]. 총알의 관통력이 몬스터를 타격할 때마다 줄게되고 이 값이 -1이 되는 경우가 있다.
+            이떄 총알이 샆 처럼 사라지지 않고 계속 씬에 남아있는 경우가 있다.
+            샆의 관통력을 -100으로 바꾼다.
+            EnenyCleaner의 per 값도 -100으로 바꾼다.
+        [d]. 총알이 생성되어 날아갈 때의 제어문으로 0보다 크거나 같게 한다.
+            if(per >= 0)
+        [e]. 총알이 충돌할 때 관통력을 상실해 가다가 소멸되는데 샆의 관통력 -1일 때는 그냥 반환하는 제어문이 있다.
+            -100으로 바꿔준다.
+
+    #4. 투사체 삭제 추가
+        [a]. 총알이 몬스터와 충돌하지 않았을 때 맵 밖까지 끝없이 날라간다.
+        [b]. Bullet 스크립트에서 충돌 탈출 이벤트 함수를 만든다.
+            플레이어의 Area를 탈출 했을 때 사라지게 한다.
+
+    #5. 레벨 디자인
+        [a]. Spawner 스크립트 : 몬스터 소환 로직
+        [b]. Update() 함수에서 스폰 레벨에 따른 몬스터 소환
+            시간에 따라 레벨이 오르는데 레벨의 기준이 될 정수형 속성을 만든다.
+            public float levelTime;
+        [c]. Awake() 함수에서 초기화 한다.
+            최대 시간에 몬스터 데이터 크기로 나누어 자동으로 구간 시간 계산
+                levelTime = GameManager.instance.maxGameTime / spawnData.Length;
+*/
+
+/*
+21. 뱀서라이크 - 모바일 빌드하기
+
+    #1. 조이스틱 추가
+        [a]. 화먼에 조이스틱을 만든다.
+        [b]. 인풋 매니저의 로직을 통해 플레이어를 이동 시킨다.
+        [c]. 패키지 매니저에서 인풋 매니저 안에 On-Screen Control을 임포트 한다.
+        [d]. 캔버스에 조이스틱의 테두리 이미지가 될 이미지 오브젝트를 만든다. Joy
+            조이스틱 스프라이트를 넣는다.
+            온스크린 컨트롤의 Stick을 Joy의 자식으로 넣어 준다.
+            Stick에 조이스틱 스프라이트를 넣는다.
+                위치 값을 0/0
+                하이어라키 창에서 스틱 우클릭 -> 언팩 컨플리틀리
+                스틱의 자식 text는 지운다.
+            Joy의 앵커를 아래로
+        [e]. Stick의 컴포넌트 On-Screen Stick에 보면 Movement Range가 있는데 조이스틱을 끌어 당길 때 이미지가 움직이는 크기를 조절한다.
+            10으로 지정
+            Control Path이 Player의 Move와 일치한지 확인
+        [f]. Player의 컴포넌트 Player Input을 보면 Auto-Switch 가 되어 있는데 이는 디바이스에 따라 자동으로 입력을 지정해 준다.
+            체크 해제
+            Default Scheme을 GamePad로 지정
+        [g]. Joy의 Scale 값을 0으로
+        [h]. 게임 매니저에서 조이스틱을 활성화 하도록 한다.
+            조이스틱 오브젝트 변수 추가한다.    public Transform uiJoy;
+        [i]. Stop() 함수에서 숨기고 Resume() 함수에서 띄운다.
+            uiJoy.localScale = Vector3.zero; one;
+
+    #2. 종료 버튼 만들기
+        [a]. GameStart의 자식으로 버튼을 만든다.
+            판넬 스프라이트 지정
+            GameStart의 앵커를 가득 채움으로 바꾸고 버튼의 앵커를 아래로 내린다.
+                size 102/15, 폰트 변경, 
+                    size 7, 사냥 종료, 색 변경
+            버튼에 Shadow 컴포넌트 부착, Quit로 명명
+        [b]. 게임 매니저에서 종료 버튼에 연결할 함수를 만든다.
+            Application.Quit();
+
+    #3. 렌더러와 프레임 지정
+        [a]. Project Setting -> Quality
+            미디움을 제외한 나머지 삭제
+            랜덤 파이프라인 메시지 : 유니버셜 렌더 파이프라인 에셋으로 연결
+            VSync Count : Don't Sync
+        [b]. 게임 매니저에서 프레임을 지정한다.
+            Awake() 함수에서 Application으로 프레임을 직접 설정한다.
+                Application.targetFrameRate = 60;
+
+    #4. 포스트 프로세싱
+        [a]. 하이어라키 -> Volume -> Gloval Volume
+            컴포넌트에 프로필을 새롭게 추가한다.
+            Add Override -> Bloom, Flim Grain, Vignette
+        [b]. MainCamera의 컴포넌트 Rendering의 Post Processing을 체크하여 후처리를 적용한다.
+        [c]. 다시 Gloval Volume의 컴포넌트를 설정한다.
+            Bloom : 빛 번짐 효과
+                Threshold=0.95, intensity=5, Scatter=0.35 체크
+            Flim Grain : 필름 노이즈 효과
+                Type, intensity=0.3, response=0.7 체크
+            Vignette : 모서리 음영 처리 효과
+                Color, Center, intensity=0.35, Smoothness=0.2 체크
+        [d]. Volume의 Weight를 통해 후처리 효과 전체를 조정할 수 있다.
+
+    #5. 모바일 시뮬레이터
+        [a]. Game -> Game -> Simulator
+        [b]. 기기를 보고 HUD 위치와 크기를 재조정
+
+    #6. 모바일 빌드
+        [a]. 빌드 세팅으로 간다.
+        [b]. 안드로이드로 스위치 플랫폼
+        [c]. 플레이어 세팅 에서 회사 이름과 게임 이름 지정
+            아이콘 Icon
+        [d]. 리솔루션 프리센테이션 -> 하이드 네비게이션 바 해제
+            랜드스케이프 체크 해제
+        [e]. 스플레시 이미지 -> 스플레시 스타일 지정
+        [f]. 아더 세팅 -> 스크립트 백렌드를 IL2CPP로 지정하여 64비트로
+            ARM64 체크
 */
