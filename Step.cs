@@ -402,7 +402,7 @@
                 int level;
         [e]. Update() 함수에서 레벨에 게임 매니저에서 게임 시간을 10으로 나눈 값을 배정한다.
             level = Mathf.FloorToInt(GameManager.instance.gameTime / 10f);
-            기존에는 timer가 0.2초보다 클 떄 소환을 하였는데 이제는 레벨을 이용하여 소환 타임을 지정하도록 한다.
+            기존에는 timer가 0.2초보다 클 때 소환을 하였는데 이제는 레벨을 이용하여 소환 타임을 지정하도록 한다.
                 if(timer > (level == 0 ? 0.5f : 0.2f))
         [f]. Spawn() 함수로 가서 레벨에 따라 몬스터 인스턴스를 다르게 만든다.
             GameObject enemy = GameManager.instance.pool.Get(level);
@@ -411,7 +411,7 @@
         [a]. Spawner 스크립트에서 소환 데이터를 저장한다.
         [b]. Spawner 스크립트에 새로운 클래스를 만든다.
             public class SpawnData
-        [c]. 속성으로 몬스터 타입( 정수형 )과 소환 시칸, 몬스터마다의 체력, 몬스터 이동 속도
+        [c]. 속성으로 몬스터 타입( 정수형 )과 소환 시간, 몬스터마다의 체력, 몬스터 이동 속도
             public int spriteType; public float spawnTime; public int health; public float speed;
         [d]. Spawner 클래스 안에 만든 클래스를 속성으로 받는다. 이떄 레벨마다 각각의 소환 데이터가 필요하기 때문에 배열로 만든다.
             public SpawnData[] spawnData;
