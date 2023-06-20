@@ -299,7 +299,7 @@
         [b]. Reposition 스크립트에 switch문으로 미리 Enemy 태그를 준비해 두었다.
             그 전에 몬스터가 죽었는지 살았는지를 먼저 체크한다.
                 if(coll.enabled)
-                    transform.Translate(playerDir * 20 + new Vector3(Random.Range(-3f, 3f), Random.Range(-3f, 3f)));
+                    transform.Translate(playerDir * 20 + new Vector3(Random.Range(-3f, 3f), Random.Range(-3f, 3f), 0f));
         [c]. 몬스터가 죽을 때 캡슐 콜라이더를 비활성화 할 예정이다. 
             Collider2D ( 모든 Collider2D 종류를 아우르는 클래스 ) coll; 속성을 갖는다.
                 Awake() 함수에서 초기화 한다.
