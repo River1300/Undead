@@ -487,7 +487,7 @@
 
     #3. 근접 무기 배치1
         [a]. 샆 객체를 모두 삭제 한다.
-        [b]. 풀 매니저 속성에 샆 프리팹을 등록해 준다.
+        [b]. 풀 매니저 속성으로 만들어 두었던 프리팹 배열에 샆 프리팹을 등록해 준다.
         [c]. 샆을 배치할 때 기준점이 되어줄 부모 오브젝트를 만든다.
             Player의 자식으로 빈 오브젝트를 만든다.
                 Weapon0으로 명명
@@ -497,22 +497,22 @@
             int id; int prefabId; float damage; int count; float speed;
         [f]. 초기화를 위한 함수를 만든다.
             public void Init()
-                id에 따라 각기 다른 초기화가 이루어지므로 switch문으로 작성한다.
+                무기의 id 속성에 따라 각기 다른 초기화가 이루어지므로 switch문으로 작성한다.
                     case 0: 일때 (샆) 회전 속도를 -150으로 초기화 한다.
         [g]. 근접 무기를 배치하기 위한 함수를 만든다.
             void Batch()
-                반복문을 돌면서 count마다 풀 매니저에 등록한 프리팹을 가져올 예정이다.
-                게임 매니저의 인스턴스화 함수를 호출하여 무기를 인스턴스화 한다.
+                반복문을 돌면서 count수 만큼 풀 매니저에 등록한 프리팹을 가져올 예정이다.
+                게임 매니저의 인스턴스화 함수를 호출한다. 이 때 매개변수로 PoolManager 속석으로 등록해 두었던 프리팹의 순서(2번째)를 전달한다.
                     Transform bullet = GameManager.instance.pool.Get(prefabId).transform;
                 총알을 만들면서 동시에 해당 무기의 위치를 변수로 저장하였다.
-                Transform.에는 parent 속성이 있는데 이 속성에 자신의 위치를 배정한다.
+                Transform.에는 parent 속성이 있는데 bullet의 parent로 자신의 위치를 배정하면 씬에서 만들어 두었던 Weapon 0객체의 자식으로 bullet이 등록된다.
                     bullet.parent = transform;
                 총알 스크립트에 접근하여 초기화 함수를 호출하여 데미지와 관통 여부를 전달한다.
                     bullet.GetComponent<Bullet>().Init(damage, -1); // -1 is Infinity Per.
         [h]. 만든 초기화 함수는 Start() 함수에서 호출하도록 한다.
         [i]. 씬으로 돌아가서 Weapon 속성을 임시로 작성해 준다.
             0 1 11 1 0
-        [j]. 샆을 z축으로 회전 시키기 위해 Update() 함수에서 무기 id에 따라 근접 무기일 경우 회전 시키도록 한다.
+        [j]. 샆을 z축으로 회전 시키기 위해 Update() 함수에서 switch문으로 무기 id에 따라 근접 무기일 경우 회전 시키도록 한다.
         [k]. transform.Rotate(Vector3.forward * speed * Time.deltaTime);
         [l]. 임시로 샆 객체의 y축을 1로 지정한다.
         [m]. 샆의 오더인레이어를 3으로 지정한다.
@@ -526,7 +526,7 @@
                 Vector3 rotVec = Vector3.forward * 360 * index / count;
             각도를 총알에 반영한다.
                 bullet.Rotate(rotVec);
-            자신의 위치에서 살짝 위로 위치를 지정한다. 그리고 이동하는 방향은 World를 기준으로 잡는다.
+            자신의 방향 기준에서 위로 위치를 지정한다. 그리고 이동하는 방향은 World를 기준으로 잡는다.
                 bullet.Translate(bullet.up * 1.5f, Space.World);
         [c]. 샆 객체를 모두 지운다.
 
@@ -544,6 +544,8 @@
         [f]. 기존에 오브젝트 풀링에서만 가져와서 샆을 만들었다면, 이미 만들어진 샆이 있을 때는 해당 샆을 사용하기로 한다.
             자신이 가지고 있는 자식 오브젝트의 갯수를 세서 만들어야할 무기 인덱스 값을 비교한다.
                 if(index < transform.childCount)
+            이미 만들어 둔 자식이 있다면 자식을 활용한다.
+                bullet = transform.GetChild(index);
 */
 
 /*

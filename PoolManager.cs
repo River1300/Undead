@@ -20,11 +20,11 @@ public class PoolManager : MonoBehaviour
     {
         GameObject select = null;
 
-        foreach(GameObject monster in pools[index])
+        foreach(GameObject Item in pools[index])
         {
-            if(!monster.activeSelf)
+            if(!Item.activeSelf)
             {
-                select = monster;
+                select = Item;
                 select.SetActive(true);
                 break;
             }

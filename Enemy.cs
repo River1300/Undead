@@ -56,4 +56,25 @@ public class Enemy : MonoBehaviour
         health = data.health;
         speed = data.speed;
     }
+
+    void OnTriggerEnter2D(Collider2D other)
+    {
+        if(!other.CompareTag("Bullet")) return;
+
+        health -= other.GetComponent<Bullet>().damage;
+
+        if(health > 0)
+        {
+            Debug.Log("Hello");
+        }
+        else
+        {
+            Dead();
+        }
+    }
+
+    void Dead()
+    {
+        gameObject.SetActive(false);
+    }
 }
