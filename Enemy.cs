@@ -11,29 +11,37 @@ public class Enemy : MonoBehaviour
     public RuntimeAnimatorController[] animCon;
 
     bool isLive;
+    WaitForFixedUpdate wait;
 
     Rigidbody2D rigid;
+    Collider2D coll;
     SpriteRenderer spriter;
     Animator anim;
 
     void Awake()
     {
         rigid = GetComponent<Rigidbody2D>();
+        coll = GetComponent<Collider2D>();
         spriter = GetComponent<SpriteRenderer>();
         anim = GetComponent<Animator>();
+        wait = new WaitForFixedUpdate();
     }
 
     void OnEnable()
     {
-        isLive = true;
-        health = maxHealth;
-
         target = GameManager.instance.player.GetComponent<Rigidbody2D>();
+
+        isLive = true;
+        coll.enabled = true;
+        rigid.simulated = true;
+        spriter.sortingOrder = 2;
+        anim.SetBool("Dead", false);
+        health = maxHealth;
     }
 
     void FixedUpdate()
     {
-        if(!isLive) return;
+        if(!isLive || anim.GetCurrentAnimatorStateInfo(0).IsName("Hit")) return;
 
         Vector2 dirVec = target.position - rigid.position;
         Vector2 nextVec = dirVec.normalized * speed * Time.fixedDeltaTime;
@@ -59,18 +67,36 @@ public class Enemy : MonoBehaviour
 
     void OnTriggerEnter2D(Collider2D other)
     {
-        if(!other.CompareTag("Bullet")) return;
+        if(!other.CompareTag("Bullet") || !isLive) return;
 
         health -= other.GetComponent<Bullet>().damage;
+        StartCoroutine(KnockBack());
 
         if(health > 0)
         {
-            Debug.Log("Hello");
+            anim.SetTrigger("Hit");
         }
         else
         {
-            Dead();
+            isLive = false;
+            coll.enabled = false;
+            rigid.simulated = false;
+            anim.SetBool("Dead", true);
+            spriter.sortingOrder = 1;
+
+            GameManager.instance.kill++;
+            GameManager.instance.GetExp();
         }
+    }
+
+    IEnumerator KnockBack()
+    {
+        yield return wait;
+
+        Vector3 playerPos = GameManager.instance.player.transform.position;
+        Vector3 dirVec = transform.position - playerPos;
+
+        rigid.AddForce(dirVec.normalized * 3f, ForceMode2D.Impulse);
     }
 
     void Dead()
