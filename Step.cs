@@ -833,7 +833,7 @@
     #1. 아이템 데이터 만들기
         [a]. 아이템 데이터의 생성을 담당할 스크립트를 만든다. ItemData
         [b]. 모노비해비얼을 ScriptableObject로 바꿔준다.
-            이 스크립트는 근접, 원거리 공격, 전체 능령치 업 아이템, 힐링등을 모두 포함한다.
+            이 스크립트는 근접, 원거리 공격, 전체 능력치 업 아이템, 힐링 등을 모두 포함한다.
         [c]. 헤더로 구분지으며 속성을 만든다.
         [d]. Main Info : 아이템 아이디, 이름, 설명, 아이콘, 아이템 타입
             public int itemId; public string itemName; public string itemDesc; public Sprite itemIcon; public enum ItemType { Melee, Range, Glove, Shoe, Heal } public ItemType itemType;
@@ -931,7 +931,7 @@
             weapon.LevelUp(nextDamage, nextCount);
 
     #4. 장비 업그레이드
-        [a]. 무기를 Weapon 스크립트로 관리 했듯이 유팅 아이템오 스크립트를 통해 관리하도록 한다.
+        [a]. 무기를 Weapon 스크립트로 관리 했듯이 유틸 아이템도 스크립트를 통해 관리하도록 한다.
             Gear
         [b]. Weapon과 비슷한 구조로 만든다.
             장비의 타입과 수치를 저장할 변수를 속성으로 만든다.
@@ -966,7 +966,7 @@
             public Gear gear;
             이제 다시 OnClick 함수로 가서 Glove, Shoe 레벨업 버튼이 눌렸을 때의 로직을 작성한다.
         [j]. 레벨이 0일 때와 아닐때 제어문을 만든다.
-            무기가 빈 오브젝트를 만들고 스크립트를 넣고 Init함수를 호출했던 것을 Gear 타입으로 그대로 따라 작성한다.
+            "무기가 빈 오브젝트를 만들고 스크립트를 넣고 Init함수를 호출했던 것"을 Gear 타입으로 그대로 따라 작성한다.
                 GameObject newGear = new GameObject();
                 gear = newGear.AddComponent<Gear>();
                 gear.Init(data);
@@ -977,6 +977,7 @@
             Weapon 스크립트에서 자신이 탄생(초기화)할 때 플레이어 자식들이 가지고 있는 모든 ApplyGear 함수를 호출한다.
             초기화 뿐만 아니라 레벨업을 할 때도 마찬가지로 호출한다.
         [m]. SendMessageOptions.DontRequireReceiver로 BroadcastMessage를 전달할 때 매개 변수로 추가한다.
+            player.BroadcastMessage("ApplyGear", SendMessageOptions.DontRequireReceiver);
         [n]. Heal 아이템은 일회성 아이템으로 Item 스크립트에서 바로 적용한다.
             버튼이 눌린 아이템이 Heal일 경우에 게임 매니저에서 health를 maxHealth로 배정해 준다.
         [o]. Heal case에서는 레벨업이 진행되지 않도록 나머지 타입에서만 break이전에 레벨업을 하도록 한다.
