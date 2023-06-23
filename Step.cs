@@ -823,7 +823,7 @@
             RectTransform rect;
                 Awake()에서 초기화 한다.
             FixedUpdate()에서 플레이어를 따라다닌다.
-        [j]. 월드와 스클린 좌표계가 다르므로 카메라를 가져와서 월드의 좌표계를 스크린 좌표계로 변환해 준다.
+        [j]. 월드와 스크린 좌표계가 다르므로 카메라를 가져와서 월드의 좌표계를 스크린 좌표계로 변환해 준다.
             rect.position = Camera.main.WorldToScreenPoint(GamaManager.instance.player.transform.position);
 */
 
