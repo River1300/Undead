@@ -31,7 +31,7 @@ public class HUD : MonoBehaviour
                 myText.text = string.Format("Lv.{0:F0}", GameManager.instance.level);
                 break;
             case InfoType.Kill:
-                myText.text = string.Format("Lv.{0:F0}", GameManager.instance.kill);
+                myText.text = string.Format("Kill:{0:F0}", GameManager.instance.kill);
                 break;
             case InfoType.Time:
                 float remainTime = GameManager.instance.maxGameTime - GameManager.instance.gameTime;

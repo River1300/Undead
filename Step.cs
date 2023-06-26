@@ -1285,7 +1285,7 @@
             public void GameVictory()
             GameOverRoutine을 복사하여 GameVictoryRoutine으로 활용한다.
                 추가로 몬스터를 청소하는 EnemyCleaner를 활성화 시킨다.
-                0.5초 쉬었다고 Result의 Win()함수를 호출한다.
+                0.5초 쉬었다가 Result의 Win()함수를 호출한다.
         [h]. Update()함수에서 maxGameTime을 초과했을 때 승리를 호출한다.
             GameVictory();
         [i]. 재시작을 할 때 이전 코루틴 함수로 Stop함수가 호출되어 시간이 정지되어 버리는데 이 시간을 다시 활성화 하기 위해 게임 스타트 함수에서 Resume() 함수를 호출한다.

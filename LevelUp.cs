@@ -54,6 +54,7 @@ public class LevelUp : MonoBehaviour
 
     public void Show()
     {
+        Next();
         rect.localScale = Vector3.one;
         GameManager.instance.Stop();
     }
