@@ -47,7 +47,7 @@ public class Weapon : MonoBehaviour
         transform.localPosition = Vector3.zero;
 
         id = data.itemId;
-        damage = data.baseDamage;
+        damage = data.baseDamage  + Character.Damage;
         count = data.baseCount;
 
         for(int i = 0; i < GameManager.instance.pool.prefabs.Length; i++)
@@ -62,11 +62,11 @@ public class Weapon : MonoBehaviour
         switch(id)
         {
             case 0:
-                speed = 150;
+                speed = 150 + (150 * Character.WeaponSpeed);
                 Batch();
                 break;
             case 1:
-                speed = 0.4f;
+                speed = 0.4f * Character.WeaponRate;
                 break;
         }
 
