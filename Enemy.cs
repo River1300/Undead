@@ -84,6 +84,9 @@ public class Enemy : MonoBehaviour
             anim.SetBool("Dead", true);
             spriter.sortingOrder = 1;
 
+            if(GameManager.instance.isLive)
+            AudioManager.instance.PlaySfx(AudioManager.Sfx.Dead);
+
             GameManager.instance.kill++;
             GameManager.instance.GetExp();
         }
@@ -97,6 +100,8 @@ public class Enemy : MonoBehaviour
         Vector3 dirVec = transform.position - playerPos;
 
         rigid.AddForce(dirVec.normalized * 3f, ForceMode2D.Impulse);
+
+        AudioManager.instance.PlaySfx(AudioManager.Sfx.Hit);
     }
 
     void Dead()
