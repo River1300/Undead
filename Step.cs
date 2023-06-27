@@ -1457,8 +1457,8 @@
         [j]. 어떤 안내문을 띄울지 CheackAchive함수에서 조건을 달성할 때 활성화 시킨다.
             반복문으로 Notice의 자식들을 순회 하면서 조건에 맞는 자식을 활성화 한다.
             bool 지역 변수를 만들어서 반복문 인덱스와 조건을 달성한 achive의 값이 같은지를 저장한다.
-                bool isAchive = index == (int)achive;
-                uiNotice.transform.GetChild(index).gameObejct.SetActive(isAchive);
+                bool isActive = index == (int)achive;
+                uiNotice.transform.GetChild(index).gameObejct.SetActive(isActive);
 */
 
 /*
