@@ -19,7 +19,7 @@ public class Bullet : MonoBehaviour
         this.damage = damage;
         this.per = per;
 
-        if(per > -100)
+        if(per >= 0)
         {
             rigid.velocity = dir * 15f;
         }
@@ -36,5 +36,12 @@ public class Bullet : MonoBehaviour
             rigid.velocity = Vector2.zero;
             gameObject.SetActive(false);
         }
+    }
+
+    void OnTriggerExit2D(Collider2D other)
+    {
+        if(!other.CompareTag("Area") || per == -100) return;
+        
+        gameObject.SetActive(false);
     }
 }

@@ -10,6 +10,7 @@ public class GameManager : MonoBehaviour
     public float gameTime;
     public float maxGameTime;
     public bool isLive;
+    public Transform uiJoy;
     
     [Header("# Player Info")]
     public int playerId;
@@ -30,6 +31,7 @@ public class GameManager : MonoBehaviour
     void Awake()
     {
         instance = this;
+        Application.targetFrameRate = 60;
     }
 
     public void GameStart(int id)
@@ -121,11 +123,18 @@ public class GameManager : MonoBehaviour
     {
         isLive = false;
         Time.timeScale = 0;
+        uiJoy.localScale = Vector3.zero;
     }
 
     public void Resume()
     {
         isLive = true;
         Time.timeScale = 1;
+        uiJoy.localScale = Vector3.one;
+    }
+
+    public void GameQuit()
+    {
+        Application.Quit();
     }
 }
